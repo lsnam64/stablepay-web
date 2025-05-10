@@ -2,43 +2,63 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Send Transaction</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+  <title>StablePay Web3 송금</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
 </head>
 <body>
-  <h2>MetaMask Transaction</h2>
-  <p id="status">Initializing...</p>
+  <h2>StablePay Web3 전송</h2>
+  <div>
+    <p id="status">MetaMask 연결을 기다리는 중...</p>
+    <button onclick="sendTransaction()">MetaMask로 결제</button>
+  </div>
 
   <script>
+    let web3;
+    let userAccount;
+
+    window.addEventListener('load', async () => {
+      if (window.ethereum) {
+        web3 = new Web3(window.ethereum);
+        try {
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          userAccount = accounts[0];
+          document.getElementById("status").innerText = `지갑 연결됨: ${userAccount}`;
+        } catch (error) {
+          document.getElementById("status").innerText = '지갑 연결 거부됨';
+        }
+      } else {
+        document.getElementById("status").innerText = 'MetaMask가 설치되지 않았습니다.';
+      }
+    });
+
     async function sendTransaction() {
       const urlParams = new URLSearchParams(window.location.search);
-      const recipient = urlParams.get('recipient');
-      const amount = urlParams.get('amount');
+      const to = urlParams.get('recipient');
+      const amountEth = urlParams.get('amount');
 
-      if (!window.ethereum) {
-        document.getElementById('status').innerText = 'MetaMask not found';
+      if (!web3 || !userAccount || !to || !amountEth) {
+        alert('정보가 부족합니다.');
         return;
       }
 
+      const value = web3.utils.toWei(amountEth, 'ether');
+
+      const tx = {
+        from: userAccount,
+        to: to,
+        value: value
+      };
+
       try {
-        await ethereum.request({ method: 'eth_requestAccounts' });
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
-
-        const tx = {
-          to: recipient,
-          value: ethers.utils.parseEther(amount),
-        };
-
-        const txResponse = await signer.sendTransaction(tx);
-        document.getElementById('status').innerText = 'Transaction sent!\nHash: ' + txResponse.hash;
+        const txHash = await window.ethereum.request({
+          method: 'eth_sendTransaction',
+          params: [tx],
+        });
+        alert(`전송 성공: TxHash = ${txHash}`);
       } catch (error) {
-        console.error(error);
-        document.getElementById('status').innerText = 'Transaction failed: ' + error.message;
+        alert(`전송 실패: ${error.message}`);
       }
     }
-
-    sendTransaction();
   </script>
 </body>
 </html>
